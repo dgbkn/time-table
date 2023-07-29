@@ -124,5 +124,7 @@ func GetTableData(sheet string, class int, f *excelize.File) [][]Data {
 		newtimings = append(newtimings, temp)
 	}
 
+	fmt.Printf("%v", newtimings)
 	return newtimings
+
 }
