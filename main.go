@@ -1,54 +1,60 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
-	"strconv"
+	"os"
+	"sort"
+	"strings"
+
+	"log"
 
 	"github.com/utkarsh-1905/thapar-time-table/utils"
-	"github.com/xuri/excelize/v2"
 )
 
+func init() {
+	fmt.Println("Initializing server...")
+	// utils.GetSubjectMapping()
+	// utils.GenerateJson()
+	fmt.Println("Server initialized")
+}
+
 func main() {
-	f, err := excelize.OpenFile("timetable.xlsx")
 
-	utils.HandleError(err)
-
-	defer func() {
-		if err = f.Close(); err != nil {
-			panic(err)
-		}
-	}()
-
+	dataFile, _ := os.Open("./data.json")
+	data := make(map[string]map[string][][]utils.Data)
+	byteRes, _ := io.ReadAll(dataFile)
+	json.Unmarshal([]byte(byteRes), &data)
+	defer dataFile.Close()
 	table, _ := template.ParseFiles("./templates/table.html")
 	home, _ := template.ParseFiles("./templates/home.html")
 	errorPage, _ := template.ParseFiles("./templates/error.html")
 
 	type HomeData struct {
 		Sheets  []string
-		Classes map[string]map[int]string
+		Classes map[string][]string
 	}
 
-	sheets := f.GetSheetList()
-
-	classes := make(map[string]map[int]string)
-
-	//finding all classes in a sheet
-	for _, sheet := range sheets {
-		temp := make(map[int]string)
-		cols, err := f.GetRows(sheet)
-		for i, d := range cols {
-			if i == 3 {
-				for j, k := range d {
-					if k != "" && k != "DAY" && k != "HOURS" && k != "SR NO" && k != "SR.NO" {
-						temp[j+1] = k
-					}
-				}
-			}
+	var sheets []string
+	for i := range data {
+		sheets = append(sheets, strings.Trim(i, " "))
+	}
+	sort.StringSlice(sheets).Sort()
+	classes := make(map[string][]string)
+	for i, d := range data {
+		temp := make([]string, 0)
+		for j := range d {
+			temp = append(temp, strings.Trim(j, " "))
 		}
-		classes[sheet] = temp
-		utils.HandleError(err)
+		sort.StringSlice(temp).Sort()
+		classes[i] = temp
+	}
+	h := HomeData{
+		Sheets:  sheets,
+		Classes: classes,
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -56,25 +62,26 @@ func main() {
 			errorPage.Execute(w, "This page is under construction !!(404)")
 			return
 		}
-		h := HomeData{
-			Sheets:  sheets,
-			Classes: classes,
+		err := home.Execute(w, h)
+		if err != nil {
+			log.Printf("Error while executing home template: %v", err)
 		}
-		home.Execute(w, h)
 	})
-	// fd := utils.GetTableData("3RD YEAR B", 56, f)
-	// fdu, _ := json.MarshalIndent(fd, "", "	")
-	// fmt.Println(string(fdu))
+
+	type TimeTableData struct {
+		Data      [][]utils.Data
+		ClassName string
+	}
+
 	http.HandleFunc("/timetable", func(w http.ResponseWriter, r *http.Request) {
-		class, _ := strconv.Atoi(r.URL.Query().Get("class"))
+		class := r.URL.Query().Get("classname")
 		sheet := r.URL.Query().Get("sheet")
-		classname := r.URL.Query().Get("classname")
 
 		flag := true
 		for i, d := range classes {
-			if i == sheet {
+			if strings.Trim(i, " ") == strings.Trim(sheet, " ") {
 				for _, k := range d {
-					if classname == k {
+					if class == k {
 						flag = false
 					}
 				}
@@ -85,10 +92,17 @@ func main() {
 			errorPage.Execute(w, "Invalid category/class combination")
 			return
 		}
-		table.Execute(w, utils.GetTableData(sheet, class, f))
+		data := TimeTableData{
+			Data:      data[sheet][class],
+			ClassName: class,
+		}
+		table.Execute(w, data)
 	})
 
-	fmt.Println("Starting server at http://localhost:3000")
-	err = http.ListenAndServe(":3000", nil)
+	fs := http.FileServer(http.Dir("assets/"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	fmt.Println("Server Running at http://localhost:3000")
+	err := http.ListenAndServe(":3000", nil)
 	utils.HandleError(err)
 }

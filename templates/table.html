@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Time Table Generator</title>
+    <title>{{.ClassName}} Time Table</title>
     <meta name="title" content="Time Table Generator" />
     <meta
       name="description"
@@ -50,15 +50,79 @@
       crossorigin="anonymous"
     ></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Thapar Time Table</title>
   </head>
+  <!-- Google tag (gtag.js) -->
+  <script
+    async
+    src="https://www.googletagmanager.com/gtag/js?id=G-SSECP1SFQX"
+  ></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag("js", new Date());
+
+    gtag("config", "G-SSECP1SFQX");
+  </script>
   <body>
+    <style>
+      body {
+        background-image: url("/static/table-background.webp");
+        background-size: no-repeat;
+      }
+      .table-responsive {
+        padding: 3%;
+      }
+      ::-webkit-scrollbar {
+        width: 3px;
+        height: 3px;
+      }
+
+      /* Track */
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+
+      /* Handle */
+      ::-webkit-scrollbar-thumb {
+        background: #494949;
+      }
+
+      /* Handle on hover */
+      ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+      .tablemain {
+        opacity: 80%;
+      }
+      .tablemain:hover {
+        opacity: 100%;
+      }
+      @media (max-width: 576px) {
+        #table {
+          min-width: 175vw;
+        }
+      }
+    </style>
     <div class="table-responsive">
-      <table class="table table-stripped table-dark table-bordered table-hover">
-        {{range .}}
-        <tr>
+      <table class="table table-dark table-hover" id="table">
+        {{range .Data}}
+        <tr class="row">
           {{range .}}
-          <td class="bg-{{.Color}}">{{.Course}}</td>
+          <td
+            class="bg-{{.Color}} col  tablemain"
+            style="
+              overflow-x: auto;
+              overflow-y: auto;
+              max-height: 100px;
+              text-align: center;
+              margin: 0rem 0.3rem 0.5rem 0.3rem;
+              border-radius: 0.5rem;
+            "
+          >
+            {{.Course}}
+          </td>
           {{end}}
         </tr>
         {{end}}
@@ -92,6 +156,16 @@
           class="badge badge-danger badge-pill"
           >here</a
         >
+      </p>
+      <p style="text-align: center" class="text-warning">
+        Project contributors
+      </p>
+      <p style="text-align: center">
+        <a
+          href="https://github.com/utkarsh-1905/time-table/graphs/contributors"
+        >
+          <img src="https://contrib.rocks/image?repo=utkarsh-1905/time-table" />
+        </a>
       </p>
     </footer>
   </body>
